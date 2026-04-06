@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitFlex — Choose Exercise</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .exercises-header { text-align: center; margin-bottom: 56px; }
+    .exercises-header h1 { font-family: var(--font-hero); font-size: 56px; letter-spacing: 3px; }
+    .exercises-header p  { color: var(--muted); font-size: 15px; margin-top: 12px; }
+
+    .exercises-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
+      gap: 20px;
+    }
+
+    .ex-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      cursor: pointer;
+      transition: all .25s;
+      position: relative; overflow: hidden;
+    }
+    .ex-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,255,136,.04), transparent);
+      opacity: 0; transition: opacity .3s;
+    }
+    .ex-card:hover::before { opacity: 1; }
+    .ex-card:hover {
+      border-color: var(--green);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.4), var(--glow-g);
+    }
+    .ex-card.active {
+      border-color: var(--green);
+      box-shadow: var(--glow-g);
+    }
+
+    .ex-icon { font-size: 48px; margin-bottom: 20px; }
+    .ex-name { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .ex-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+
+    .ex-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+
+    .ex-select-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-family: var(--font-display);
+      font-size: 14px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      transition: all .2s;
+    }
+    .ex-card:hover .ex-select-btn,
+    .ex-card.active .ex-select-btn {
+      background: var(--green); color: #000; border-color: var(--green);
+    }
+
+    .ex-card.disabled { opacity: .4; pointer-events: none; }
+    .ex-card.disabled .ex-icon { filter: grayscale(1); }
+
+    /* User ID input */
+    .setup-bar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 28px;
+      margin-bottom: 40px;
+      display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;
+    }
+    .setup-bar .field { flex: 1; min-width: 200px; }
+    .setup-bar label { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .setup-bar .field-cam { width: 120px; flex: 0 0 120px; }
+
+    .start-btn-area { text-align: center; margin-top: 48px; }
+    .start-btn-area .selected-label {
+      font-size: 13px; color: var(--muted); margin-bottom: 16px; letter-spacing: 1px;
+    }
+    .start-btn-area .selected-label span { color: var(--green); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo"><a href="index.html">FIT<span>FLEX</span></a></div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="exercises.html" class="active">Train</a>
+      <a href="history.html">History</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="container">
+
+    <div class="exercises-header">
+      <h1>CHOOSE EXERCISE</h1>
+      <p>Select an exercise and configure your session</p>
+    </div>
+
+    <!-- Setup bar -->
+    <div class="setup-bar">
+      <div class="field">
+        <label>Your Name / User ID</label>
+        <input type="text" id="userId" placeholder="e.g. john_doe" value="guest" />
+      </div>
+      <div class="field field-cam">
+        <label>Camera Index</label>
+        <input type="number" id="cameraIdx" value="0" min="0" max="5" />
+      </div>
+    </div>
+
+    <!-- Exercise grid -->
+    <div class="exercises-grid" id="exercisesGrid">
+
+      <div class="ex-card" data-exercise="bicep_curl" onclick="selectExercise(this)">
+        <div class="ex-icon">💪</div>
+        <div class="ex-name">Bicep Curl</div>
+        <div class="ex-desc">Tracks elbow angle (shoulder→elbow→wrist). Counts reps automatically and flags lateral elbow drift.</div>
+        <div class="ex-meta">
+          <span class="badge badge-green">Supported</span>
+          <span class="badge badge-cyan">Elbow Angle</span>
+        </div>
+        <button class="ex-select-btn">Select</button>
+      </div>
+
+      <div class="ex-card disabled" data-exercise="lat_pulldown">
+        <div class="ex-icon">🏋️</div>
+        <div class="ex-name">Lat Pulldown</div>
+        <div class="ex-desc">Tracks elbow + shoulder angles. Monitors elbow width and back posture.</div>
+        <div class="ex-meta">
+          <span class="badge badge-yellow">Coming Soon</span>
+        </div>
+        <button class="ex-select-btn">Coming Soon</button>
+      </div>
+
+      <div class="ex-card disabled" data-exercise="squat">
+        <div class="ex-icon">🦵</div>
+        <div class="ex-name">Squat</div>
+        <div class="ex-desc">Tracks knee angle (hip→knee→ankle). Checks depth and knee alignment over toes.</div>
+        <div class="ex-meta">
+          <span class="badge badge-yellow">Coming Soon</span>
+        </div>
+        <button class="ex-select-btn">Coming Soon</button>
+      </div>
+
+      <div class="ex-card disabled" data-exercise="pushup">
+        <div class="ex-icon">🤸</div>
+        <div class="ex-name">Push-up</div>
+        <div class="ex-desc">Tracks elbow angle and body alignment. Detects hip sagging and incomplete range of motion.</div>
+        <div class="ex-meta">
+          <span class="badge badge-yellow">Coming Soon</span>
+        </div>
+        <button class="ex-select-btn">Coming Soon</button>
+      </div>
+
+      <div class="ex-card disabled" data-exercise="shoulder_press">
+        <div class="ex-icon">🙌</div>
+        <div class="ex-name">Shoulder Press</div>
+        <div class="ex-desc">Tracks elbow and shoulder angles. Monitors vertical arm path and core stability.</div>
+        <div class="ex-meta">
+          <span class="badge badge-yellow">Coming Soon</span>
+        </div>
+        <button class="ex-select-btn">Coming Soon</button>
+      </div>
+
+    </div>
+
+    <!-- Start -->
+    <div class="start-btn-area">
+      <p class="selected-label" id="selectedLabel">Select an exercise to continue</p>
+      <button class="btn btn-primary btn-lg" id="startBtn" disabled onclick="startWorkout()">
+        ▶ &nbsp;Start Session
+      </button>
+      <p id="errorMsg" style="color:var(--red);margin-top:16px;font-size:13px;display:none;"></p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8765';
+  let selectedExercise = null;
+
+  function selectExercise(el) {
+    document.querySelectorAll('.ex-card').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    selectedExercise = el.dataset.exercise;
+    document.getElementById('selectedLabel').innerHTML =
+      `Selected: <span>${selectedExercise.replace('_',' ').toUpperCase()}</span>`;
+    document.getElementById('startBtn').disabled = false;
+  }
+
+  async function startWorkout() {
+    const userId = document.getElementById('userId').value.trim() || 'guest';
+    const cameraIdx = parseInt(document.getElementById('cameraIdx').value) || 0;
+    const errEl = document.getElementById('errorMsg');
+    const btn = document.getElementById('startBtn');
+
+    if (!selectedExercise) return;
+
+    btn.textContent = 'Starting…';
+    btn.disabled = true;
+    errEl.style.display = 'none';
+
+    try {
+      const res = await fetch(`${API}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          exercise: selectedExercise,
+          camera_src: cameraIdx
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Store session info
+      localStorage.setItem('activeSession', JSON.stringify({
+        session_id: data.session_id,
+        user_id: userId,
+        exercise: selectedExercise
+      }));
+
+      window.location.href = 'dashboard.html';
+    } catch (e) {
+      errEl.textContent = `Error: ${e.message} — Is the backend running on port 8765?`;
+      errEl.style.display = 'block';
+      btn.textContent = '▶  Start Session';
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
