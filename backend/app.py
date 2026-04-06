@@ -3,12 +3,14 @@ FitFlex Arena — FastAPI backend
 Run: uvicorn app:app --host 0.0.0.0 --port 8765 --reload
 """
 
+import os
 import asyncio
 import threading
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -19,12 +21,16 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from demo_fixed import FitFlexEngine
 
+load_dotenv()
+
 # ---------------------------------------------------------------------------
 # Database setup
 # ---------------------------------------------------------------------------
-SQLALCHEMY_DATABASE_URL = "sqlite:///./fitflex.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fitflex.db")
+connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
+
 db_engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
 Base = declarative_base()
@@ -135,9 +141,12 @@ def _worker_loop():
 
 app = FastAPI(title="FitFlex Arena API", version="1.0.0")
 
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",")] if allowed_origins_env else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -312,4 +321,7 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8765, reload=True)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8765"))
+
+    uvicorn.run("app:app", host=host, port=port, reload=True)
