@@ -44,7 +44,10 @@ export default function Dashboard() {
 
     return () => {
       clearInterval(timerRef.current);
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+      }
     };
   }, []);
 

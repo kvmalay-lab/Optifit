@@ -6,6 +6,7 @@ import threading
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from threading import Lock
+from one_euro_filter import OneEuroFilter
 
 # --- CONFIGURATION ---
 TARGET_WIDTH = 640
@@ -34,26 +35,26 @@ class RepData:
 class BicepState:
     def __init__(self):
         self.count = 0
-        self.state = "DOWN"
+        self.internal_state = "DOWN"
         self.last_angle = 0.0
 
     def update(self, angle: float, form_valid: bool):
-        if not form_valid:
-            self.state = "INVALID_FORM"
-            return self.count, self.state
-
-        new_state = self.state
+        # Always update internal state to count reps correctly even if form flickers
+        new_state = self.internal_state
         if angle < ANGLE_THRESHOLD_UP:
             new_state = "UP"
         elif angle > ANGLE_THRESHOLD_DOWN:
             new_state = "DOWN"
 
-        if self.state == "UP" and new_state == "DOWN":
+        if self.internal_state == "UP" and new_state == "DOWN":
             self.count += 1
 
-        self.state = new_state
+        self.internal_state = new_state
         self.last_angle = angle
-        return self.count, self.state
+
+        # Return invalid form purely for UI display if form is bad
+        display_state = "INVALID_FORM" if not form_valid else self.internal_state
+        return self.count, display_state
 
 
 class VideoStream:
@@ -100,6 +101,8 @@ class FitFlexEngine:
         self.left_arm = BicepState()
         self.right_arm = BicepState()
         self.set_count = 1
+        self.l_filter = OneEuroFilter(t0=time.time(), x0=180.0, min_cutoff=1.0, beta=0.01)
+        self.r_filter = OneEuroFilter(t0=time.time(), x0=180.0, min_cutoff=1.0, beta=0.01)
         self.is_running = False
 
         # Thread-safe state
@@ -196,11 +199,14 @@ class FitFlexEngine:
                     body_width * MAX_LATERAL_DRIFT_RATIO if body_width > 0 else 0.2
                 )
 
+                current_time = time.time()
+
                 # Left arm
                 l_sh = [lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].x, lm[self.mp_pose.PoseLandmark.LEFT_SHOULDER].y]
                 l_el = [lm[self.mp_pose.PoseLandmark.LEFT_ELBOW].x, lm[self.mp_pose.PoseLandmark.LEFT_ELBOW].y]
                 l_wr = [lm[self.mp_pose.PoseLandmark.LEFT_WRIST].x, lm[self.mp_pose.PoseLandmark.LEFT_WRIST].y]
-                l_angle = self._calculate_angle(l_sh, l_el, l_wr)
+                l_angle_raw = self._calculate_angle(l_sh, l_el, l_wr)
+                l_angle = self.l_filter(current_time, l_angle_raw)
                 l_drift = abs(l_wr[0] - l_el[0])
                 l_form = l_drift < dyn_threshold
                 l_reps, l_state = self.left_arm.update(l_angle, l_form)
@@ -209,7 +215,8 @@ class FitFlexEngine:
                 r_sh = [lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].x, lm[self.mp_pose.PoseLandmark.RIGHT_SHOULDER].y]
                 r_el = [lm[self.mp_pose.PoseLandmark.RIGHT_ELBOW].x, lm[self.mp_pose.PoseLandmark.RIGHT_ELBOW].y]
                 r_wr = [lm[self.mp_pose.PoseLandmark.RIGHT_WRIST].x, lm[self.mp_pose.PoseLandmark.RIGHT_WRIST].y]
-                r_angle = self._calculate_angle(r_sh, r_el, r_wr)
+                r_angle_raw = self._calculate_angle(r_sh, r_el, r_wr)
+                r_angle = self.r_filter(current_time, r_angle_raw)
                 r_drift = abs(r_wr[0] - r_el[0])
                 r_form = r_drift < dyn_threshold
                 r_reps, r_state = self.right_arm.update(r_angle, r_form)
