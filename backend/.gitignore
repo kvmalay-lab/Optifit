@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+fitflex.db
+*.log
+.env
+venv/
